@@ -1,0 +1,50 @@
+version: "3.9"
+services:
+  db:
+    image: mariadb:10.6
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: root_password
+      MARIADB_DATABASE: trading
+      MARIADB_USER: tr_user
+      MARIADB_PASSWORD: tr_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+
+  backend:
+    build: ./backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      APP_ENV: local
+      DB_URL: mysql+aiomysql://tr_user:tr_password@db:3306/trading
+      JWT_SECRET: change_me
+      WEBHOOK_SECRET: change_me
+      OANDA_ENV: practice
+      OANDA_TOKEN: replace_me
+      OANDA_ACCOUNT_ID: replace_me
+      PREDICTION_GATE_ENABLED: "true"
+      MC_PATHS: 20000
+      USE_TORCH_MODELS: "true"
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+
+  ui:
+    build: ./ui
+    command: npm run dev -- --host 0.0.0.0 --port 5173
+    environment:
+      VITE_API_URL: http://localhost:8000
+    depends_on:
+      - backend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./ui:/usr/src/app
+
+volumes:
+  db_data:
